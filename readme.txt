@@ -5,7 +5,7 @@ Contributors: ironikus
 Donate link: https://paypal.me/ironikus
 Tags: easy digital downloads, webhooks, automation, ironikus, easydigitaldownloads, edd software licensing, edd recurring, digital products, api, wp webhooks
 Requires at least: 4.7
-Tested up to: 5.4.2
+Tested up to: 5.5
 Stable Tag: 1.0.0
 License: GNU Version 3 or Any Later Version
 
@@ -14,6 +14,7 @@ A WP Webhooks extension to extend Easy Digital Downloads with webhooks
 == Description ==
 
 This plugin extends the possibilities of WP Webhooks and WP Webhooks Pro by integrating [Easy Digital Downloads](https://easydigitaldownloads.com/). 
+This extension is also available within the [web view](https://wp-webhooks.com/) of our plugin.
 For a full list of features, please check out the list down below:
 
 = Features =
@@ -65,6 +66,8 @@ You can also check out our [landing page](https://ironikus.com/easy-digital-down
 Feel free to message us in case you want special features - We love to help!
 
 == Installation ==
+
+We have a full installation guide for our plugin available: [Click here](https://ironikus.com/docs/knowledge-base/how-to-install-wp-webhooks-easy-digital-downloads/)
 
 1. Upload the zip file to your WordPress site (Plugins > Add New > Upload)
 2. Activate the plugin
