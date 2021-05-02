@@ -67,11 +67,8 @@ if( !class_exists( 'WP_Webhooks_EDD_Subscriptions_Triggers' ) ){
 			if( ! $this->is_active() ){
 				return;
 			}
-			
-			$active_webhooks   = WPWHPRO()->settings->get_active_webhooks();
-			$availale_triggers = $active_webhooks['triggers'];
 
-			if ( isset( $availale_triggers['edd_subscriptions'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_subscriptions' ) ) ){
 				add_action( 'edd_subscription_post_create', array( $this, 'wpwh_trigger_edd_subscriptions_map_create' ), 10, 2 );
 				add_action( 'edd_subscription_post_renew', array( $this, 'wpwh_trigger_edd_subscriptions_map_renew' ), 10, 3 );
 				add_action( 'edd_subscription_completed', array( $this, 'wpwh_trigger_edd_subscriptions_map_completed' ), 10, 2 );
@@ -82,7 +79,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Subscriptions_Triggers' ) ){
 				add_filter( 'ironikus_demo_test_edd_subscriptions', array( $this, 'wpwh_send_demo_edd_subscriptions' ), 10, 3 );
 			}
 
-			if ( isset( $availale_triggers['edd_subscription_payment'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_subscription_payment' ) ) ){
 				add_action( 'edd_recurring_add_subscription_payment', array( $this, 'wpwh_trigger_edd_subscription_payment_init' ), 10, 2 );
 				add_filter( 'ironikus_demo_test_edd_subscription_payment', array( $this, 'wpwh_send_demo_edd_subscription_payment' ), 10, 3 );
 			}
@@ -240,8 +237,14 @@ if( !class_exists( 'WP_Webhooks_EDD_Subscriptions_Triggers' ) ){
 				}
 
 				if( $is_valid ) {
-					
-					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $subscription );
+
+					$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+                    if( $webhook_url_name !== null ){
+                        $response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $subscription );
+                    } else {
+                        $response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $subscription );
+                    }
 
 					do_action( 'wpwhpro/webhooks/trigger_edd_subscriptions', $subscription, $status, $response_data_array );
 				}
@@ -387,7 +390,13 @@ if( !class_exists( 'WP_Webhooks_EDD_Subscriptions_Triggers' ) ){
 			$response_data_array = array();
 
 			foreach( $webhooks as $webhook ){
-				$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+				}
 			}
 
 			do_action( 'wpwhpro/webhooks/trigger_edd_new_customer', $customer_id, $customer, $response_data_array );
@@ -472,7 +481,13 @@ if( !class_exists( 'WP_Webhooks_EDD_Subscriptions_Triggers' ) ){
 			);
 
 			foreach( $webhooks as $webhook ){
-				$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $data );
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $data );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $data );
+				}
 			}
 
 			do_action( 'wpwhpro/webhooks/trigger_edd_subscription_payment', $data, $response_data_array );

@@ -6,12 +6,54 @@ if ( !defined( 'ABSPATH' ) ) exit;
 if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 	class WP_Webhooks_EDD_Actions{
+		private $wpedd_use_new_filter = null;
 
 		public function __construct() {
 
-			add_action( 'wpwhpro/webhooks/add_webhooks_actions', array( $this, 'add_webhook_actions' ), 20, 3 );
+			if( $this->wpwh_use_new_action_filter() ){
+				add_filter( 'wpwhpro/webhooks/add_webhook_actions', array( $this, 'add_webhook_actions' ), 20, 4 );
+			} else {
+				add_action( 'wpwhpro/webhooks/add_webhooks_actions', array( $this, 'add_webhook_actions' ), 20, 3 );
+			}
 			add_filter( 'wpwhpro/webhooks/get_webhooks_actions', array( $this, 'add_webhook_actions_content' ), 20 );
 
+		}
+
+		/**
+		 * ######################
+		 * ###
+		 * #### HELPERS
+		 * ###
+		 * ######################
+		 */
+
+		public function wpwh_use_new_action_filter(){
+
+			if( $this->wpedd_use_new_filter !== null ){
+				return $this->wpedd_use_new_filter;
+			}
+
+			$return = false;
+			$version_current = '0';
+			$version_needed = '0';
+	
+			if( defined( 'WPWHPRO_VERSION' ) ){
+				$version_current = WPWHPRO_VERSION;
+				$version_needed = '4.1.0';
+			}
+	
+			if( defined( 'WPWH_VERSION' ) ){
+				$version_current = WPWH_VERSION;
+				$version_needed = '3.1.0';
+			}
+	
+			if( version_compare( (string) $version_current, (string) $version_needed, '>=') ){
+				$return = true;
+			}
+
+			$this->wpedd_use_new_filter = $return;
+
+			return $return;
 		}
 
 		/**
@@ -22,9 +64,6 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 		 * ######################
 		 */
 
-		/*
-		 * Register all available action webhooks here
-		 */
 		public function add_webhook_actions_content( $actions ){
 
 			//downloads
@@ -53,79 +92,78 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 		/*
 		 * Add the callback function for a defined action
 		 *
-		 * We always send three different properties with the defined wehook.
-		 * @param $action - the defined action defined within the action_edd_create_payment function
+		 * @param $action - the defined action that is currently called
 		 * @param $webhook - The webhook itself
 		 * @param $api_key - an api_key if defined
 		 */
-		public function add_webhook_actions( $action, $webhook, $api_key ){
+		public function add_webhook_actions( $response, $action, $webhook, $api_key = '' ){
 
-			$active_webhooks = WPWHPRO()->settings->get_active_webhooks();
+			//Backwards compatibility prior 4.1.0 (wpwhpro) or 3.1.0 (wpwh)
+			if( ! $this->wpwh_use_new_action_filter() ){
+				$api_key = $webhook;
+				$webhook = $action;
+				$action = $response;
 
-			$available_actions = $active_webhooks['actions'];
+				$active_webhooks = WPWHPRO()->settings->get_active_webhooks();
+				$available_actions = $active_webhooks['actions'];
+
+				if( ! isset( $available_actions[ $action ] ) ){
+					return $response;
+				}
+			}
+
+			$return_data = null;
 
 			switch( $action ){
 				case 'edd_create_download':
-					if( isset( $available_actions['edd_create_download'] ) ){
-						$this->action_edd_create_download();
-					}
+					$return_data = $this->action_edd_create_download();
 					break;
 				case 'edd_update_download':
-					if( isset( $available_actions['edd_update_download'] ) ){
-						$this->action_edd_create_download( true );
-					}
+					$return_data = $this->action_edd_create_download( true );
 					break;
 				case 'edd_delete_download':
-					if( isset( $available_actions['edd_delete_download'] ) ){
-						$this->action_edd_delete_download( true );
-					}
+					$return_data = $this->action_edd_delete_download( true );
 					break;
 				case 'edd_create_payment':
-					if( isset( $available_actions['edd_create_payment'] ) ){
-						$this->action_edd_create_payment();
-					}
+					$return_data = $this->action_edd_create_payment();
 					break;
 				case 'edd_update_payment':
-					if( isset( $available_actions['edd_update_payment'] ) ){
-						$this->action_edd_update_payment();
-					}
+					$return_data = $this->action_edd_update_payment();
 					break;
 				case 'edd_delete_payment':
-					if( isset( $available_actions['edd_delete_payment'] ) ){
-						$this->action_edd_delete_payment();
-					}
+					$return_data = $this->action_edd_delete_payment();
 					break;
 				case 'edd_create_customer':
-					if( isset( $available_actions['edd_create_customer'] ) ){
-						$this->action_edd_create_customer();
-					}
+					$return_data = $this->action_edd_create_customer();
 					break;
 				case 'edd_update_customer':
-					if( isset( $available_actions['edd_update_customer'] ) ){
-						$this->action_edd_update_customer();
-					}
+					$return_data = $this->action_edd_update_customer();
 					break;
 				case 'edd_delete_customer':
-					if( isset( $available_actions['edd_delete_customer'] ) ){
-						$this->action_edd_delete_customer();
-					}
+					$return_data = $this->action_edd_delete_customer();
 					break;
 				case 'edd_create_discount':
-					if( isset( $available_actions['edd_create_discount'] ) ){
-						$this->action_edd_create_discount();
-					}
+					$return_data = $this->action_edd_create_discount();
 					break;
 				case 'edd_update_discount':
-					if( isset( $available_actions['edd_update_discount'] ) ){
-						$this->action_edd_update_discount();
-					}
+					$return_data = $this->action_edd_update_discount();
 					break;
 				case 'edd_delete_discount':
-					if( isset( $available_actions['edd_delete_discount'] ) ){
-						$this->action_edd_delete_discount();
-					}
+					$return_data = $this->action_edd_delete_discount();
 					break;
 			}
+
+			//Make sure we only fire the response in case the old logic is used
+			if( $return_data !== null && ! $this->wpwh_use_new_action_filter() ){
+				WPWHPRO()->webhook->echo_action_data( $return_data );
+				die();
+			}
+
+			if( $return_data !== null ){
+				$response = $return_data;
+			}	
+			
+			return $response;
 		}
 
 		/**
@@ -236,52 +274,52 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 			//These are the main arguments the user can use to input. You should always grab them within your action function.
 			$parameter = array(
-				'download_id'           => array( 'required' => true, 'short_description' => WPWHPRO()->helpers->translate( '(Integer) The ID of the existing download', 'action-update-download-content' ) ),
-				'create_if_none'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set this value to "yes" to create the download in case the given download id does not exist. Default: no', 'action-update-download-content' ) ),
-				'price'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(float) The price of the download you want to use. Format: 19.99', 'action-update-download-content' ) ),
+				'download_id'           		=> array( 'required' => true, 'short_description' => WPWHPRO()->helpers->translate( '(Integer) The ID of the existing download', 'action-update-download-content' ) ),
+				'create_if_none'           		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set this value to "yes" to create the download in case the given download id does not exist. Default: no', 'action-update-download-content' ) ),
+				'price'           				=> array( 'short_description' => WPWHPRO()->helpers->translate( '(float) The price of the download you want to use. Format: 19.99', 'action-update-download-content' ) ),
 				'is_variable_pricing'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Set this value to "yes" if you want to activate variable pricing for this product. Default: no', 'action-update-download-content' ) ),
-				'variable_prices'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A JSON formatted string, containing all of the variable product prices. Please see the description for further details.', 'action-update-download-content' ) ),
-				'default_price_id'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(integer) The ID of the price variation you want to use as the default price.', 'action-update-download-content' ) ),
-				'download_files'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string containing all of the downloable file. Please see the description for further details.', 'action-update-download-content' ) ),
-				'bundled_products'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string, containing all of the bundled products. Please see the description for further details.', 'action-update-download-content' ) ),
-				'bundled_products_conditions'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string that contains the price dependencies. Please see the description for further details.', 'action-update-download-content' ) ),
-				'increase_earnings'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(Float) The price you would like to increase the lifetime earnings of this product. Please see the description for further details.', 'action-update-download-content' ) ),
-				'decrease_earnings'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(Float) The price you would like to decrease the lifetime earnings of this product. Please see the description for further details.', 'action-update-download-content' ) ),
-				'increase_sales'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) Increase the number of sales from a statistical point of view. Please see the description for further details.', 'action-update-download-content' ) ),
-				'decrease_sales'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) Decrease the number of sales from a statistical point of view. Please see the description for further details.', 'action-update-download-content' ) ),
-				'hide_purchase_link'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set this string to "yes" to hide the purchase button under the download. Please see the description for more details.', 'action-update-download-content' ) ),
-				'download_limit'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) Limits how often a customer can globally download the purchase. Please see the description for further details.', 'action-update-download-content' ) ),
-				'download_author'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(mixed) The ID or the email of the user who added the post. Default is the current user ID.', 'action-update-download-content' ) ),
-				'download_date'             => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The date of the post. Default is the current time. Format: 2018-12-31 11:11:11', 'action-update-download-content' ) ),
-				'download_date_gmt'         => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The date of the post in the GMT timezone. Default is the value of $post_date.', 'action-update-download-content' ) ),
-				'download_content'          => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post content. Default empty.', 'action-update-download-content' ) ),
-				'download_content_filtered' => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The filtered post content. Default empty.', 'action-update-download-content' ) ),
-				'download_title'            => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post title. Default empty.', 'action-update-download-content' ) ),
-				'download_excerpt'          => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post excerpt. Default empty.', 'action-update-download-content' ) ),
-				'download_status'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post status. Default \'draft\'.', 'action-update-download-content' ) ),
-				'comment_status'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Whether the post can accept comments. Accepts \'open\' or \'closed\'. Default is the value of \'default_comment_status\' option.', 'action-update-download-content' ) ),
-				'ping_status'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Whether the post can accept pings. Accepts \'open\' or \'closed\'. Default is the value of \'default_ping_status\' option.', 'action-update-download-content' ) ),
-				'download_password'         => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The password to access the post. Default empty.', 'action-update-download-content' ) ),
-				'download_name'             => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post name. Default is the sanitized post title when creating a new post.', 'action-update-download-content' ) ),
-				'to_ping'               => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Space or carriage return-separated list of URLs to ping. Default empty.', 'action-update-download-content' ) ),
-				'pinged'                => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Space or carriage return-separated list of URLs that have been pinged. Default empty.', 'action-update-download-content' ) ),
-				'download_parent'           => array( 'short_description' => WPWHPRO()->helpers->translate( '(int) Set this for the post it belongs to, if any. Default 0.', 'action-update-download-content' ) ),
-				'menu_order'            => array( 'short_description' => WPWHPRO()->helpers->translate( '(int) The order the post should be displayed in. Default 0.', 'action-update-download-content' ) ),
-				'download_mime_type'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The mime type of the post. Default empty.', 'action-update-download-content' ) ),
-				'guid'                  => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Global Unique ID for referencing the post. Default empty.', 'action-update-download-content' ) ),
-				'download_category'         => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A comma separated list of category names, slugs, or IDs. Defaults to value of the \'default_category\' option. Example: cat_1,cat_2,cat_3', 'action-update-download-content' ) ),
-				'tags_input'            => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A comma separated list of tag names, slugs, or IDs. Default empty.', 'action-update-download-content' ) ),
-				'tax_input'             => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A simple or JSON formatted string containing existing taxonomy terms. Default empty. More details within the description.', 'action-update-post-content' ) ),
-				'meta_input'            => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A json or a comma and semicolon separated list of post meta values keyed by their post meta key. Default empty. More info in the description.', 'action-update-download-content' ) ),
-				'wp_error'              => array( 'short_description' => WPWHPRO()->helpers->translate( 'Whether to return a WP_Error on failure. Posible values: "yes" or "no". Default value: "no".', 'action-update-download-content' ) ),
-				'do_action'             => array( 'short_description' => WPWHPRO()->helpers->translate( 'Advanced: Register a custom action after Webhooks Pro fires this webhook. More infos are in the description.', 'action-update-download-content' ) )
+				'variable_prices'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A JSON formatted string, containing all of the variable product prices. Please see the description for further details.', 'action-update-download-content' ) ),
+				'default_price_id'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(integer) The ID of the price variation you want to use as the default price.', 'action-update-download-content' ) ),
+				'download_files'           		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string containing all of the downloable file. Please see the description for further details.', 'action-update-download-content' ) ),
+				'bundled_products'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string, containing all of the bundled products. Please see the description for further details.', 'action-update-download-content' ) ),
+				'bundled_products_conditions'   => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string that contains the price dependencies. Please see the description for further details.', 'action-update-download-content' ) ),
+				'increase_earnings'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Float) The price you would like to increase the lifetime earnings of this product. Please see the description for further details.', 'action-update-download-content' ) ),
+				'decrease_earnings'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Float) The price you would like to decrease the lifetime earnings of this product. Please see the description for further details.', 'action-update-download-content' ) ),
+				'increase_sales'           		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) Increase the number of sales from a statistical point of view. Please see the description for further details.', 'action-update-download-content' ) ),
+				'decrease_sales'           		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) Decrease the number of sales from a statistical point of view. Please see the description for further details.', 'action-update-download-content' ) ),
+				'hide_purchase_link'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set this string to "yes" to hide the purchase button under the download. Please see the description for more details.', 'action-update-download-content' ) ),
+				'download_limit'           		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) Limits how often a customer can globally download the purchase. Please see the description for further details.', 'action-update-download-content' ) ),
+				'download_author'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(mixed) The ID or the email of the user who added the post. Default is the current user ID.', 'action-update-download-content' ) ),
+				'download_date'             	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The date of the post. Default is the current time. Format: 2018-12-31 11:11:11', 'action-update-download-content' ) ),
+				'download_date_gmt'         	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The date of the post in the GMT timezone. Default is the value of $post_date.', 'action-update-download-content' ) ),
+				'download_content'          	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post content. Default empty.', 'action-update-download-content' ) ),
+				'download_content_filtered' 	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The filtered post content. Default empty.', 'action-update-download-content' ) ),
+				'download_title'            	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post title. Default empty.', 'action-update-download-content' ) ),
+				'download_excerpt'          	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post excerpt. Default empty.', 'action-update-download-content' ) ),
+				'download_status'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post status. Default \'draft\'.', 'action-update-download-content' ) ),
+				'comment_status'        		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Whether the post can accept comments. Accepts \'open\' or \'closed\'. Default is the value of \'default_comment_status\' option.', 'action-update-download-content' ) ),
+				'ping_status'           		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Whether the post can accept pings. Accepts \'open\' or \'closed\'. Default is the value of \'default_ping_status\' option.', 'action-update-download-content' ) ),
+				'download_password'         	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The password to access the post. Default empty.', 'action-update-download-content' ) ),
+				'download_name'             	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The post name. Default is the sanitized post title when creating a new post.', 'action-update-download-content' ) ),
+				'to_ping'               		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Space or carriage return-separated list of URLs to ping. Default empty.', 'action-update-download-content' ) ),
+				'pinged'                		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Space or carriage return-separated list of URLs that have been pinged. Default empty.', 'action-update-download-content' ) ),
+				'download_parent'           	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(int) Set this for the post it belongs to, if any. Default 0.', 'action-update-download-content' ) ),
+				'menu_order'            		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(int) The order the post should be displayed in. Default 0.', 'action-update-download-content' ) ),
+				'download_mime_type'        	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) The mime type of the post. Default empty.', 'action-update-download-content' ) ),
+				'guid'                  		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) Global Unique ID for referencing the post. Default empty.', 'action-update-download-content' ) ),
+				'download_category'         	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A comma separated list of category names, slugs, or IDs. Defaults to value of the \'default_category\' option. Example: cat_1,cat_2,cat_3', 'action-update-download-content' ) ),
+				'tags_input'            		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A comma separated list of tag names, slugs, or IDs. Default empty.', 'action-update-download-content' ) ),
+				'tax_input'             		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A simple or JSON formatted string containing existing taxonomy terms. Default empty. More details within the description.', 'action-update-post-content' ) ),
+				'meta_input'            		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A json or a comma and semicolon separated list of post meta values keyed by their post meta key. Default empty. More info in the description.', 'action-update-download-content' ) ),
+				'wp_error'              		=> array( 'short_description' => WPWHPRO()->helpers->translate( 'Whether to return a WP_Error on failure. Posible values: "yes" or "no". Default value: "no".', 'action-update-download-content' ) ),
+				'do_action'             		=> array( 'short_description' => WPWHPRO()->helpers->translate( 'Advanced: Register a custom action after Webhooks Pro fires this webhook. More infos are in the description.', 'action-update-download-content' ) )
 			);
 
 			//This is a more detailled view of how the data you sent will be returned.
 			$returns = array(
-				'success'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(Bool) True if the action was successful, false if not. E.g. array( \'success\' => true )', 'action-edd_update_download-content' ) ),
-				'msg'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A message with more information about the current request. E.g. array( \'msg\' => "This action was successful." )', 'action-update-download-content' ) ),
-				'data'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(array) Within the data array, you will find further details about the response, as well as the payment id and further information.', 'action-update-download-content' ) ),
+				'success'       => array( 'short_description' => WPWHPRO()->helpers->translate( '(Bool) True if the action was successful, false if not. E.g. array( \'success\' => true )', 'action-edd_update_download-content' ) ),
+				'msg'        	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A message with more information about the current request. E.g. array( \'msg\' => "This action was successful." )', 'action-update-download-content' ) ),
+				'data'        	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(array) Within the data array, you will find further details about the response, as well as the payment id and further information.', 'action-update-download-content' ) ),
 			);
 
 			//This area will be displayed within the "return" area of the webhook action
@@ -356,22 +394,22 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				)
 			);
 
-			$post_id                = intval( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_id' ) );
+			$post_id                		= intval( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_id' ) );
 
 			//edd related
-			$increase_earnings      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'increase_earnings' );//float
-			$decrease_earnings      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'decrease_earnings' );//float
-			$increase_sales      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'increase_sales' ); //int
-			$decrease_sales      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'decrease_sales' );//int
-			$edd_price      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'price' );//float
-			$is_variable_pricing      = ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'is_variable_pricing' ) === 'yes' ) ? 1 : 0;//integer
-			$edd_variable_prices      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'variable_prices' );//json string
-			$default_price_id      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'default_price_id' );//integer
-			$edd_download_files      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_files' );//json string
-			$edd_bundled_products      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products' );//json string
-			$bundled_products_conditions      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products_conditions' );//json string
-			$hide_purchase_link      = ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'hide_purchase_link' ) === 'yes' ) ? 'on': 'off';
-			$download_limit      = intval( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_limit' ) );
+			$increase_earnings      		= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'increase_earnings' );//float
+			$decrease_earnings      		= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'decrease_earnings' );//float
+			$increase_sales      			= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'increase_sales' ); //int
+			$decrease_sales      			= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'decrease_sales' );//int
+			$edd_price      				= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'price' );//float
+			$is_variable_pricing      		= ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'is_variable_pricing' ) === 'yes' ) ? 1 : 0;//integer
+			$edd_variable_prices      		= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'variable_prices' );//json string
+			$default_price_id      			= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'default_price_id' );//integer
+			$edd_download_files      		= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_files' );//json string
+			$edd_bundled_products      		= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products' );//json string
+			$bundled_products_conditions    = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products_conditions' );//json string
+			$hide_purchase_link      		= ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'hide_purchase_link' ) === 'yes' ) ? 'on': 'off';
+			$download_limit      			= intval( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_limit' ) );
 
 			//default wp
 			$post_author            = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_author' );
@@ -406,9 +444,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				if ( empty( $post_id ) ) {
 					$return_args['msg'] = WPWHPRO()->helpers->translate("The class EDD_Download does not exist. Please check if the plugin is active.", 'action-create-download-not-found' );
 
-					WPWHPRO()->webhook->echo_response_data( $return_args );
-
-					die();
+					return $return_args;
 				}
 			}
 
@@ -416,18 +452,14 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				if ( empty( $post_id ) ) {
 					$return_args['msg'] = WPWHPRO()->helpers->translate("The download id is required to update a download.", 'action-create-download-not-found' );
 
-					WPWHPRO()->webhook->echo_response_data( $return_args );
-
-					die();
+					return $return_args;
 				}
 			}
 
 			if( ! empty( $post_id ) && get_post_type( $post_id ) !== 'download' ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate("The given download id is not a download.", 'action-create-download-not-found' );
 
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-
-				die();
+				return $return_args;
 			}
 
 			$create_post_on_update = false;
@@ -453,9 +485,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 					if( empty( $create_post_on_update ) ){
 						$return_args['msg'] = WPWHPRO()->helpers->translate("Download not found.", 'action-create-download-not-found' );
 
-						WPWHPRO()->webhook->echo_response_data( $return_args );
-
-						die();
+						return $return_args;
 					}
 
 				}
@@ -790,8 +820,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $post_data, $post_id, $meta_input, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -802,18 +831,18 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 		 */
 		public function edd_create_update_download_add_meta( $post_id ){
 
-			$response_body = WPWHPRO()->helpers->get_response_body();
+			$response_body 				= WPWHPRO()->helpers->get_response_body();
 
-			$meta_input = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'meta_input' );
-			$edd_price      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'price' );//float
-			$is_variable_pricing      = ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'is_variable_pricing' ) === 'yes' ) ? 1 : 0;//integer
-			$edd_variable_prices      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'variable_prices' );//json string
-			$default_price_id      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'default_price_id' );//integer
-			$edd_download_files      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_files' );//json string
-			$edd_bundled_products      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products' );//json string
-			$bundled_products_conditions      = WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products_conditions' );//json string
-			$hide_purchase_link      = ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'hide_purchase_link' ) === 'yes' ) ? 'on': 'off';
-			$download_limit      = intval( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_limit' ) );
+			$meta_input 				= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'meta_input' );
+			$edd_price      			= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'price' );//float
+			$is_variable_pricing      	= ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'is_variable_pricing' ) === 'yes' ) ? 1 : 0;//integer
+			$edd_variable_prices      	= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'variable_prices' );//json string
+			$default_price_id      		= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'default_price_id' );//integer
+			$edd_download_files      	= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_files' );//json string
+			$edd_bundled_products      	= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products' );//json string
+			$bundled_products_conditions= WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'bundled_products_conditions' );//json string
+			$hide_purchase_link      	= ( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'hide_purchase_link' ) === 'yes' ) ? 'on': 'off';
+			$download_limit      		= intval( WPWHPRO()->helpers->validate_request_value( $response_body['content'], 'download_limit' ) );
 
 			//START EDD
 			if( ! empty( $edd_price ) && is_numeric( $edd_price ) ){
@@ -932,15 +961,15 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 			$parameter = array(
 				'download_id'       => array( 'required' => true, 'short_description' => WPWHPRO()->helpers->translate( 'The download id of the download you want to delete.', 'action-delete-download-content' ) ),
-				'force_delete'  => array( 'short_description' => WPWHPRO()->helpers->translate( '(optional) Whether to bypass trash and force deletion. Possible values: "yes" and "no". Default: "no".', 'action-delete-download-content' ) ),
-				'do_action'     => array( 'short_description' => WPWHPRO()->helpers->translate( 'Advanced: Register a custom action after Webhooks Pro fires this webhook. More infos are in the description.', 'action-delete-download-content' ) )
+				'force_delete'  	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(optional) Whether to bypass trash and force deletion. Possible values: "yes" and "no". Default: "no".', 'action-delete-download-content' ) ),
+				'do_action'     	=> array( 'short_description' => WPWHPRO()->helpers->translate( 'Advanced: Register a custom action after Webhooks Pro fires this webhook. More infos are in the description.', 'action-delete-download-content' ) )
 			);
 
 			//This is a more detailled view of how the data you sent will be returned.
 			$returns = array(
-				'success'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(Bool) True if the action was successful, false if not. E.g. array( \'success\' => true )', 'action-edd_delete_download-content' ) ),
-				'msg'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A message with more information about the current request. E.g. array( \'msg\' => "This action was successful." )', 'action-delete-download-content' ) ),
-				'data'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(array) Within the data array, you will find further details about the response, as well as the download id and further information.', 'action-delete-download-content' ) ),
+				'success'        	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Bool) True if the action was successful, false if not. E.g. array( \'success\' => true )', 'action-edd_delete_download-content' ) ),
+				'msg'        		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A message with more information about the current request. E.g. array( \'msg\' => "This action was successful." )', 'action-delete-download-content' ) ),
+				'data'        		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(array) Within the data array, you will find further details about the response, as well as the download id and further information.', 'action-delete-download-content' ) ),
 			);
 
 			//This area will be displayed within the "return" area of the webhook action
@@ -1037,8 +1066,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $post, $post_id, $check, $force_delete );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -1051,31 +1079,31 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 			//These are the main arguments the user can use to input. You should always grab them within your action function.
 			$parameter = array(
-				'customer_email'       => array( 'required' => true, 'short_description' => WPWHPRO()->helpers->translate( '(String) The email of the customer you want to associate with the payment. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
-				'discounts'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A comma-separated list of discount codes. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
-				'gateway'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The slug of the currently used gateway. Please see the description for further details. Default empty.', 'action-edd_create_payment-content' ) ),
-				'currency'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The currency code of the payment. Default is your default currency. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
-				'parent_payment_id'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) The payment id of a parent payment.', 'action-edd_create_payment-content' ) ),
-				'payment_status'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The status of the payment. Default is "pending". Please see the description for further details.', 'action-edd_create_payment-content' ) ),
-				'product_data'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string, containing all the product data and options. Please refer to the description for examples and further details.', 'action-edd_create_payment-content' ) ),
-				'edd_agree_to_terms'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Defines if a user agreed to the terms. Set it to "yes" to mark the user as agreed. Default: no', 'action-edd_create_payment-content' ) ),
-				'edd_agree_to_privacy_policy'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Defines if a user agreed to the privacy policy. Set it to "yes" to mark the user as agreed. Default: no', 'action-edd_create_payment-content' ) ),
-				'payment_date'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set a custom payment date. The format is flexible, but we recommend SQL format.', 'action-edd_create_payment-content' ) ),
-				'user_id'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) The user id of the WordPress user. If not defined, we try to fetch the id using the customer_email.', 'action-edd_create_payment-content' ) ),
-				'customer_first_name'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The first name of the customer. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
-				'customer_last_name'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The last name of the customer. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
-				'customer_country'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The country code of the customer.', 'action-edd_create_payment-content' ) ),
-				'customer_state'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The state of the customer.', 'action-edd_create_payment-content' ) ),
-				'customer_zip'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The zip of the customer.', 'action-edd_create_payment-content' ) ),
-				'send_receipt'    => array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set it to "yes" for sending out a receipt to the customer. Default "no". Please see the description for further details.', 'action-edd_create_payment-content' ) ),
-				'do_action'     => array( 'short_description' => WPWHPRO()->helpers->translate( 'Advanced: Register a custom action after WP Webhooks fires this webhook. More infos are in the description.', 'action-edd_create_payment-content' ) ),
+				'customer_email'       			=> array( 'required' => true, 'short_description' => WPWHPRO()->helpers->translate( '(String) The email of the customer you want to associate with the payment. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
+				'discounts'    					=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A comma-separated list of discount codes. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
+				'gateway'    					=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The slug of the currently used gateway. Please see the description for further details. Default empty.', 'action-edd_create_payment-content' ) ),
+				'currency'    					=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The currency code of the payment. Default is your default currency. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
+				'parent_payment_id'    			=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) The payment id of a parent payment.', 'action-edd_create_payment-content' ) ),
+				'payment_status'    			=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The status of the payment. Default is "pending". Please see the description for further details.', 'action-edd_create_payment-content' ) ),
+				'product_data'    				=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) A JSON formatted string, containing all the product data and options. Please refer to the description for examples and further details.', 'action-edd_create_payment-content' ) ),
+				'edd_agree_to_terms'    		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Defines if a user agreed to the terms. Set it to "yes" to mark the user as agreed. Default: no', 'action-edd_create_payment-content' ) ),
+				'edd_agree_to_privacy_policy'	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Defines if a user agreed to the privacy policy. Set it to "yes" to mark the user as agreed. Default: no', 'action-edd_create_payment-content' ) ),
+				'payment_date'    				=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set a custom payment date. The format is flexible, but we recommend SQL format.', 'action-edd_create_payment-content' ) ),
+				'user_id'    					=> array( 'short_description' => WPWHPRO()->helpers->translate( '(Integer) The user id of the WordPress user. If not defined, we try to fetch the id using the customer_email.', 'action-edd_create_payment-content' ) ),
+				'customer_first_name'    		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The first name of the customer. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
+				'customer_last_name'    		=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The last name of the customer. Please see the description for further details.', 'action-edd_create_payment-content' ) ),
+				'customer_country'    			=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The country code of the customer.', 'action-edd_create_payment-content' ) ),
+				'customer_state'    			=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The state of the customer.', 'action-edd_create_payment-content' ) ),
+				'customer_zip'    				=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) The zip of the customer.', 'action-edd_create_payment-content' ) ),
+				'send_receipt'    				=> array( 'short_description' => WPWHPRO()->helpers->translate( '(String) Set it to "yes" for sending out a receipt to the customer. Default "no". Please see the description for further details.', 'action-edd_create_payment-content' ) ),
+				'do_action'     				=> array( 'short_description' => WPWHPRO()->helpers->translate( 'Advanced: Register a custom action after WP Webhooks fires this webhook. More infos are in the description.', 'action-edd_create_payment-content' ) ),
 			);
 
 			//This is a more detailled view of how the data you sent will be returned.
 			$returns = array(
-				'success'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(Bool) True if the action was successful, false if not. E.g. array( \'success\' => true )', 'action-edd_create_payment-content' ) ),
-				'msg'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A message with more information about the current request. E.g. array( \'msg\' => "This action was successful." )', 'action-edd_create_payment-content' ) ),
-				'data'        => array( 'short_description' => WPWHPRO()->helpers->translate( '(array) Within the data array, you will find further details about the response, as well as the payment id and further information.', 'action-edd_create_payment-content' ) ),
+				'success'       => array( 'short_description' => WPWHPRO()->helpers->translate( '(Bool) True if the action was successful, false if not. E.g. array( \'success\' => true )', 'action-edd_create_payment-content' ) ),
+				'msg'        	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(string) A message with more information about the current request. E.g. array( \'msg\' => "This action was successful." )', 'action-edd_create_payment-content' ) ),
+				'data'        	=> array( 'short_description' => WPWHPRO()->helpers->translate( '(array) Within the data array, you will find further details about the response, as well as the payment id and further information.', 'action-edd_create_payment-content' ) ),
 			);
 
 			//This area will be displayed within the "return" area of the webhook action
@@ -1238,8 +1266,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 				$valid_payment_data['msg'] = WPWHPRO()->helpers->translate( "Your payment was not created. Please check the errors for further details.", 'action-edd_create_payment-failure' );
 
-				WPWHPRO()->webhook->echo_response_data( $valid_payment_data );
-				die();
+				return $valid_payment_data;
 			}
 
 			if( ! $send_receipt ){
@@ -1257,6 +1284,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( $payment_id && ! empty( $payment_status ) && $payment_status !== 'pending' ){
 				edd_update_payment_status( $payment_id, $payment_status );
 			}
+
 
 			if( ! $send_receipt ){
 				add_action( 'edd_complete_purchase', 'edd_trigger_purchase_receipt', 999, 3 );
@@ -1282,8 +1310,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $payment_id, $purchase_data, $send_receipt, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -1357,8 +1384,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( empty( $payment_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'Payment not updated. The argument payment_id cannot be empty.', 'action-edd_update_payment-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			$payment_exists = edd_get_payment_by( 'id', $payment_id );
@@ -1366,8 +1392,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( empty( $payment_exists ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The payment id you tried to update, could not be fetched.', 'action-edd_update_payment-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			$return_args['data']['payment_id'] = $payment_id;
@@ -1387,8 +1412,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $payment_id, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -1460,8 +1484,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( empty( $payment_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'Payment not deleted. The argument payment_id cannot be empty.', 'action-edd_delete_payment-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			$payment_exists = edd_get_payment_by( 'id', $payment_id );
@@ -1469,8 +1492,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( empty( $payment_exists ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The payment id you tried to delete, could not be fetched.', 'action-edd_delete_payment-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			$return_args['data']['payment_id'] = $payment_id;
@@ -1485,8 +1507,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $payment_id, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -1604,8 +1625,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( ! class_exists( 'EDD_Customer' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_Customer() is undefined. The user could not be created.', 'action-edd_create_customer-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if ( ! empty( $customer_email ) ) {
@@ -1741,8 +1761,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $customer_id, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -1867,15 +1886,13 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( ! class_exists( 'EDD_Customer' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_Customer() is undefined. The customer could not be created.', 'action-edd_update_customer-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $customer_value ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'Customer not updated. The argument customer_value cannot be empty.', 'action-edd_update_customer-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			switch( $get_customer_by ){
@@ -1895,8 +1912,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				if( ! $create_if_none ){
 					$return_args['msg'] = WPWHPRO()->helpers->translate( 'The customer you tried to update does not exist.', 'action-edd_update_customer-failure' );
 	
-					WPWHPRO()->webhook->echo_response_data( $return_args );
-					die();
+					return $return_args;
 				} else {
 
 					if( is_email( $customer_value ) ){
@@ -1910,16 +1926,14 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 					if( empty( $create_email ) ){
 						$return_args['msg'] = WPWHPRO()->helpers->translate( 'No email found. Please set an email first to create the customer.', 'action-edd_update_customer-failure' );
 			
-						WPWHPRO()->webhook->echo_response_data( $return_args );
-						die();
+						return $return_args;
 					}
 
 					$customer = new EDD_Customer( $create_email );
 					if( ! empty( $customer->id ) ){
 						$return_args['msg'] = WPWHPRO()->helpers->translate( 'The email defined within the customer_value was not registered for a customer, but the email within customer_email was. Please use a different email to create the customer.', 'action-edd_update_customer-failure' );
 			
-						WPWHPRO()->webhook->echo_response_data( $return_args );
-						die();
+						return $return_args;
 					}
 
 					if( empty( $customer_first_name ) && empty( $customer_last_name ) ) {
@@ -2086,8 +2100,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $customer_id, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -2171,15 +2184,13 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( ! class_exists( 'EDD_Customer' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_Customer() is undefined. The user could not be deleted.', 'action-edd_delete_customer-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $customer_value ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'User not deleted. The argument customer_value cannot be empty.', 'action-edd_delete_customer-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			switch( $get_customer_by ){
@@ -2197,8 +2208,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 			if ( empty( $customer ) || empty( $customer->id ) ) {
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The user you tried to delete does not exist.', 'action-edd_delete_customer-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			$customer_id = $customer->id;
@@ -2243,8 +2253,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $customer_id, $customer, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -2378,15 +2387,13 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( ! class_exists( 'EDD_Discount' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_Discount() is undefined. The discount code could not be created.', 'action-edd_create_discount-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $code ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'No code given. The argument code cannot be empty.', 'action-edd_create_discount-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			$discount = new EDD_Discount();
@@ -2463,8 +2470,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 			if ( empty( $discount ) || empty( $discount->ID ) ) {
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The discount code was not created.', 'action-edd_create_discount-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			$return_args['data'] = $discount_args;
@@ -2476,8 +2482,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $discount_id, $discount, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -2615,8 +2620,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( ! class_exists( 'EDD_Discount' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_Discount() is undefined. The discount code could not be updated.', 'action-edd_update_discount-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( ! empty( $discount_id ) ){
@@ -2642,8 +2646,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				if( ! $create_if_none ){
 					$return_args['msg'] = WPWHPRO()->helpers->translate( 'We could not match your given ID to a discount. No discount was updated.', 'action-edd_update_discount-failure' );
 	
-					WPWHPRO()->webhook->echo_response_data( $return_args );
-					die();
+					return $return_args;
 				} else {
 					$discount = new EDD_Discount();
 				}
@@ -2735,8 +2738,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 					$return_args['msg'] = WPWHPRO()->helpers->translate( 'The discount code was not updated.', 'action-edd_update_discount-failure' );
 				}
 				
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( $needs_creation ){
@@ -2753,8 +2755,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $discount_id, $discount, $needs_creation, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -2825,8 +2826,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( ! function_exists( 'edd_get_discount_by_code' ) && ! function_exists( 'edd_get_discount_by' ) && ! function_exists( 'edd_remove_discount' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The functions edd_remove_discount() and edd_get_discount_by() are undefined. The discount code could not be deleted.', 'action-edd_delete_discount-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( ! empty( $discount_id ) ){
@@ -2842,8 +2842,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 			if( empty( $discount_id ) || ! is_numeric( $discount_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'We could not find any discount for your given value.', 'action-edd_delete_discount-failure' );
 	
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			edd_remove_discount( $discount_id );
@@ -2856,8 +2855,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				do_action( $do_action, $discount_id, $discount, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**

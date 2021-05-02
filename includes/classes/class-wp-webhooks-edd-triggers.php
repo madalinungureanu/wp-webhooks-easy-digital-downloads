@@ -49,26 +49,23 @@ if( !class_exists( 'WP_Webhooks_EDD_Triggers' ) ){
          */
 		public function add_webhook_triggers() {
 
-			$active_webhooks   = WPWHPRO()->settings->get_active_webhooks();
-			$availale_triggers = $active_webhooks['triggers'];
-
-			if ( isset( $availale_triggers['edd_new_customer'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_new_customer' ) ) ){
 				add_action( 'edd_customer_post_create', array( $this, 'wpwh_trigger_edd_new_customer_init' ), 10, 2 );
 				add_filter( 'ironikus_demo_test_edd_new_customer', array( $this, 'wpwh_send_demo_edd_new_customer' ), 10, 3 );
 			}
 
-			if ( isset( $availale_triggers['edd_update_customer'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_update_customer' ) ) ){
 				add_action( 'edd_customer_post_update', array( $this, 'wpwh_trigger_edd_update_customer_init' ), 10, 3 );
 				add_filter( 'ironikus_demo_test_edd_update_customer', array( $this, 'wpwh_send_demo_edd_update_customer' ), 10, 3 );
 			}
 
-			if ( isset( $availale_triggers['edd_payments'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_payments' ) ) ){
 				add_action( 'edd_payment_delete', array( $this, 'wpwh_trigger_edd_payments_delete_prepare' ), 10, 1 );
 				add_action( 'edd_update_payment_status', array( $this, 'wpwh_trigger_edd_payments_init' ), 10, 3 );
 				add_filter( 'ironikus_demo_test_edd_payments', array( $this, 'wpwh_send_demo_edd_payments' ), 10, 3 );
 			}
 
-			if ( isset( $availale_triggers['edd_file_downloaded'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_file_downloaded' ) ) ){
 				add_action( 'edd_process_verified_download', array( $this, 'wpwh_trigger_edd_file_downloaded' ), 10, 4 );
 				add_filter( 'ironikus_demo_test_edd_file_downloaded', array( $this, 'wpwh_send_demo_edd_file_downloaded' ), 10, 3 );
 			}
@@ -161,7 +158,15 @@ if( !class_exists( 'WP_Webhooks_EDD_Triggers' ) ){
 			$response_data_array = array();
 
 			foreach( $webhooks as $webhook ){
-				$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+				}
+
 			}
 
 			do_action( 'wpwhpro/webhooks/trigger_edd_new_customer', $customer_id, $customer, $response_data_array );
@@ -274,7 +279,15 @@ if( !class_exists( 'WP_Webhooks_EDD_Triggers' ) ){
 			$response_data_array = array();
 
 			foreach( $webhooks as $webhook ){
-				$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $customer );
+				}
+
 			}
 
 			do_action( 'wpwhpro/webhooks/trigger_edd_update_customer', $customer_id, $customer, $response_data_array );
@@ -443,8 +456,14 @@ if( !class_exists( 'WP_Webhooks_EDD_Triggers' ) ){
 					//append status changes
 					$order_data['new_status'] = $new_status;
 					$order_data['old_status'] = $old_status;
-					
-					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $order_data );
+
+					$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+					if( $webhook_url_name !== null ){
+						$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $order_data );
+					} else {
+						$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $order_data );
+					}
 
 					do_action( 'wpwhpro/webhooks/trigger_edd_payments', $payment_id, $new_status, $old_status, $response_data_array );
 				}
@@ -569,7 +588,15 @@ if( !class_exists( 'WP_Webhooks_EDD_Triggers' ) ){
 			$data['product']   = get_the_title( $download_id );
 
 			foreach( $webhooks as $webhook ){
-				$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $data );
+
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $data );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $data );
+				}
+				
 			}
 
 			do_action( 'wpwhpro/webhooks/trigger_edd_file_downloaded', $download_id, $email, $payment_id, $args, $response_data_array );

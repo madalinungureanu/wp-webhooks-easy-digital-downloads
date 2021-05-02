@@ -3,7 +3,7 @@
  * Plugin Name: WP Webhooks - Easy Digital Downloads
  * Plugin URI: https://ironikus.com/downloads/wp-webhooks-edd/
  * Description: Extend Easy Digital Downloads with webhooks
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Ironikus
  * Author URI: https://ironikus.com/
  * License: GPL3
@@ -16,7 +16,7 @@ if ( !defined( 'ABSPATH' ) ) exit;
 define( 'WPWH_EDD_NAME',           'WP Webhooks - Easy Digital Downloads' );
 
 // Plugin version.
-define( 'WPWH_EDD_VERSION',        '1.0.0' );
+define( 'WPWH_EDD_VERSION',        '1.0.1' );
 
 // Plugin Root File.
 define( 'WPWH_EDD_PLUGIN_FILE',    __FILE__ );
@@ -71,5 +71,3 @@ if ( function_exists( 'EDD' ) && defined( 'EDD_VERSION' ) && version_compare( ED
 	}
 	
 }
-
-

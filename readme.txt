@@ -5,8 +5,8 @@ Contributors: ironikus
 Donate link: https://paypal.me/ironikus
 Tags: easy digital downloads, webhooks, automation, ironikus, easydigitaldownloads, edd software licensing, edd recurring, digital products, api, wp webhooks
 Requires at least: 4.7
-Tested up to: 5.5
-Stable Tag: 1.0.0
+Tested up to: 5.7
+Stable Tag: 1.0.1
 License: GNU Version 3 or Any Later Version
 
 A WP Webhooks extension to extend Easy Digital Downloads with webhooks
@@ -77,6 +77,13 @@ We have a full installation guide for our plugin available: [Click here](https:/
 
 
 == Changelog ==
+
+= 1.0.1: May 02, 2021 =
+* Feature: Add support for the EDD Per Product Emails
+* Feature: Full compatibility with all new standards of WP Webhooks 3.1.0 and WP Webhooks 4.1.0
+* Tweak: Remove unnecessary variable output
+* Tweak optimize descriptions
+* Fix: The edd_create_payment action order status fired at a wrong positiion, causing certain orders to not return the correct price within the response
 
 = 1.0.0: July 29, 2020 =
 * Birthday of WP Webhooks - Easy Digital Downloads

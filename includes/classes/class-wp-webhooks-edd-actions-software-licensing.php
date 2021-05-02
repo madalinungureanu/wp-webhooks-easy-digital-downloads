@@ -6,14 +6,56 @@ if ( !defined( 'ABSPATH' ) ) exit;
 if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 
 	class WP_Webhooks_EDD_Software_Licensing_Actions{
+		private $wpwh_use_new_filter = null;
 
 		public function __construct() {
 
-			add_action( 'wpwhpro/webhooks/add_webhooks_actions', array( $this, 'add_webhook_actions' ), 20, 3 );
+			if( $this->wpwh_use_new_action_filter() ){
+				add_filter( 'wpwhpro/webhooks/add_webhook_actions', array( $this, 'add_webhook_actions' ), 20, 4 );
+			} else {
+				add_action( 'wpwhpro/webhooks/add_webhooks_actions', array( $this, 'add_webhook_actions' ), 20, 3 );
+			}
 			add_filter( 'wpwhpro/webhooks/get_webhooks_actions', array( $this, 'add_webhook_actions_content' ), 20 );
 
 			add_filter( 'wpwh/descriptions/actions/edd_create_payment/default_cart_details', array( $this, 'customize_edd_create_payment_default_cart_details' ), 10 );
 
+		}
+
+		/**
+		 * ######################
+		 * ###
+		 * #### HELPERS
+		 * ###
+		 * ######################
+		 */
+
+		public function wpwh_use_new_action_filter(){
+
+			if( $this->wpwh_use_new_filter !== null ){
+				return $this->wpwh_use_new_filter;
+			}
+
+			$return = false;
+			$version_current = '0';
+			$version_needed = '0';
+	
+			if( defined( 'WPWHPRO_VERSION' ) ){
+				$version_current = WPWHPRO_VERSION;
+				$version_needed = '4.1.0';
+			}
+	
+			if( defined( 'WPWH_VERSION' ) ){
+				$version_current = WPWH_VERSION;
+				$version_needed = '3.1.0';
+			}
+	
+			if( version_compare( (string) $version_current, (string) $version_needed, '>=') ){
+				$return = true;
+			}
+
+			$this->wpwh_use_new_filter = $return;
+
+			return $return;
 		}
 
 		/**
@@ -76,38 +118,54 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 		 * @param $webhook - The webhook itself
 		 * @param $api_key - an api_key if defined
 		 */
-		public function add_webhook_actions( $action, $webhook, $api_key ){
+		public function add_webhook_actions( $response, $action, $webhook, $api_key = '' ){
 
 			if( ! $this->is_active() ){
-				return;
+				return $response;
 			}
 
-			$active_webhooks = WPWHPRO()->settings->get_active_webhooks();
+			//Backwards compatibility prior 4.1.0 (wpwhpro) or 3.1.0 (wpwh)
+			if( ! $this->wpwh_use_new_action_filter() ){
+				$api_key = $webhook;
+				$webhook = $action;
+				$action = $response;
 
-			$available_actions = $active_webhooks['actions'];
+				$active_webhooks = WPWHPRO()->settings->get_active_webhooks();
+				$available_actions = $active_webhooks['actions'];
+
+				if( ! isset( $available_actions[ $action ] ) ){
+					return $response;
+				}
+			}
+
+			$return_data = null;
 
 			switch( $action ){
 				case 'edd_create_license':
-					if( isset( $available_actions['edd_create_license'] ) ){
-						$this->action_edd_create_license();
-					}
+					$return_data = $this->action_edd_create_license();
 					break;
 				case 'edd_update_license':
-					if( isset( $available_actions['edd_update_license'] ) ){
-						$this->action_edd_update_license();
-					}
+					$return_data = $this->action_edd_update_license();
 					break;
 				case 'edd_renew_license':
-					if( isset( $available_actions['edd_renew_license'] ) ){
-						$this->action_edd_renew_license();
-					}
+					$return_data = $this->action_edd_renew_license();
 					break;
 				case 'edd_delete_license':
-					if( isset( $available_actions['edd_delete_license'] ) ){
-						$this->action_edd_delete_license();
-					}
+					$return_data = $this->action_edd_delete_license();
 					break;
 			}
+
+			//Make sure we only fire the response in case the old logic is used
+			if( $return_data !== null && ! $this->wpwh_use_new_action_filter() ){
+				WPWHPRO()->webhook->echo_action_data( $return_data );
+				die();
+			}
+
+			if( $return_data !== null ){
+				$response = $return_data;
+			}
+			
+			return $response;
 		}
 
 		/**
@@ -221,33 +279,28 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 
 			if( ! class_exists( 'EDD_SL_License' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_SL_License() does not exist. The license was not created.', 'action-edd_create_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( ! class_exists( 'EDD_SL_Download' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_SL_Download() does not exist. The license was not created.', 'action-edd_create_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $download_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The download_id argument cannot be empty. The license was not created.', 'action-edd_create_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $payment_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The payment_id argument cannot be empty. The license was not created.', 'action-edd_create_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
             }
             
             $purchased_download   = new EDD_SL_Download( $download_id );
             if( ! $purchased_download->licensing_enabled() ){
                 $return_args['msg'] = WPWHPRO()->helpers->translate( 'The download given within the download_id argument has no licensing activated within the product. The license was not created.', 'action-edd_create_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
             }
 
             $license = new EDD_SL_License();
@@ -408,8 +461,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 				do_action( $do_action, $license_id, $license, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -529,20 +581,17 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 
 			if( ! class_exists( 'EDD_SL_License' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_SL_License() does not exist. The license was not created.', 'action-edd_update_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( ! class_exists( 'EDD_Payment' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_Payment() does not exist. The license was not created.', 'action-edd_update_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $license_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The license_id argument cannot be empty. The license was not updated.', 'action-edd_update_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
             
             $payment = new EDD_Payment( $payment_id );
@@ -726,8 +775,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 				do_action( $do_action, $license_id, $license, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**
@@ -801,20 +849,17 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 
 			if( ! class_exists( 'EDD_SL_License' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_SL_License() does not exist. The license was not renewed.', 'action-edd_renew_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $license_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The license_id argument cannot be empty. The license was not renewed.', 'action-edd_renew_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $payment_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The payment_id argument cannot be empty. The license was not renewed.', 'action-edd_renew_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
             
             $license = new EDD_SL_License( $license_id );
@@ -837,8 +882,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 				do_action( $do_action, $license_id, $license, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 		/**
 		 * ###########
@@ -911,14 +955,12 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 
 			if( ! class_exists( 'EDD_SL_License' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The class EDD_SL_License() does not exist. The license was not renewed.', 'action-edd_delete_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
 
 			if( empty( $license_id ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( 'The license_id argument cannot be empty. The license was not renewed.', 'action-edd_delete_license-failure' );
-				WPWHPRO()->webhook->echo_response_data( $return_args );
-				die();
+				return $return_args;
 			}
             
             $license = new EDD_SL_License( $license_id );
@@ -940,8 +982,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 				do_action( $do_action, $license_id, $license, $return_args );
 			}
 
-			WPWHPRO()->webhook->echo_response_data( $return_args );
-			die();
+			return $return_args;
 		}
 
 		/**

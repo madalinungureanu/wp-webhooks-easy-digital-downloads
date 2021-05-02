@@ -67,26 +67,23 @@ if( !class_exists( 'WP_Webhooks_EDD_SL_Triggers' ) ){
 			if( ! $this->is_active() ){
 				return;
 			}
-			
-			$active_webhooks   = WPWHPRO()->settings->get_active_webhooks();
-			$availale_triggers = $active_webhooks['triggers'];
 
-			if ( isset( $availale_triggers['edd_license_status'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_license_status' ) ) ){
 				add_action( 'edd_sl_post_set_status', array( $this, 'wpwh_trigger_edd_license_status_init' ), 10, 2 );
 				add_filter( 'ironikus_demo_test_edd_license_status', array( $this, 'wpwh_send_demo_edd_license_status' ), 10, 3 );
 			}
 
-			if ( isset( $availale_triggers['edd_license_activation'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_license_activation' ) ) ){
 				add_action( 'edd_sl_activate_license', array( $this, 'wpwh_trigger_edd_license_activation_init' ), 10, 2 );
 				add_filter( 'ironikus_demo_test_edd_license_activation', array( $this, 'wpwh_send_demo_edd_license_activation' ), 10, 3 );
 			}
 
-			if ( isset( $availale_triggers['edd_license_deactivate'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_license_deactivate' ) ) ){
 				add_action( 'edd_sl_deactivate_license', array( $this, 'wpwh_trigger_edd_license_deactivate_init' ), 10, 2 );
 				add_filter( 'ironikus_demo_test_edd_license_deactivate', array( $this, 'wpwh_send_demo_edd_license_deactivate' ), 10, 3 );
 			}
 
-			if ( isset( $availale_triggers['edd_license_creation'] ) ) {
+			if( ! empty( WPWHPRO()->webhook->get_hooks( 'trigger', 'edd_license_creation' ) ) ){
 				add_action( 'edd_sl_store_license', array( $this, 'wpwh_trigger_edd_license_creation_init' ), 10, 4 );
 				add_filter( 'ironikus_demo_test_edd_license_creation', array( $this, 'wpwh_send_demo_edd_license_creation' ), 10, 3 );
 			}
@@ -190,7 +187,13 @@ if( !class_exists( 'WP_Webhooks_EDD_SL_Triggers' ) ){
 
                     $license_data = $this->edd_get_license_data( $license_id );
 					
-					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+					$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+                    if( $webhook_url_name !== null ){
+                        $response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+                    } else {
+                        $response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+                    }
 
 					do_action( 'wpwhpro/webhooks/trigger_edd_license_status', $license_id, $new_status, $license_data, $response_data_array );
 				}
@@ -285,7 +288,15 @@ if( !class_exists( 'WP_Webhooks_EDD_SL_Triggers' ) ){
 
 			foreach( $webhooks as $webhook ){
                 $license_data = $this->edd_get_license_data( $license_id, $download_id );
-                $response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+				}
+
                 do_action( 'wpwhpro/webhooks/trigger_edd_license_activation', $license_id, $download_id, $license_data, $response_data_array );
 			}
 		}
@@ -377,7 +388,15 @@ if( !class_exists( 'WP_Webhooks_EDD_SL_Triggers' ) ){
 
 			foreach( $webhooks as $webhook ){
                 $license_data = $this->edd_get_license_data( $license_id, $download_id );
-                $response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+				}
+
                 do_action( 'wpwhpro/webhooks/trigger_edd_license_deactivate', $license_id, $download_id, $license_data, $response_data_array );
 			}
 		}
@@ -469,7 +488,15 @@ if( !class_exists( 'WP_Webhooks_EDD_SL_Triggers' ) ){
 
 			foreach( $webhooks as $webhook ){
                 $license_data = $this->edd_get_license_data( $license_id, $download_id, $payment_id );
-                $response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+
+				$webhook_url_name = ( is_array($webhook) && isset( $webhook['webhook_url_name'] ) ) ? $webhook['webhook_url_name'] : null;
+
+				if( $webhook_url_name !== null ){
+					$response_data_array[ $webhook_url_name ] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+				} else {
+					$response_data_array[] = WPWHPRO()->webhook->post_to_webhook( $webhook, $license_data );
+				}
+
                 do_action( 'wpwhpro/webhooks/trigger_edd_license_creation', $license_id, $download_id, $payment_id, $type, $license_data, $response_data_array );
 			}
 		}
