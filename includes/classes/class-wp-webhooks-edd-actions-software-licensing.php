@@ -390,6 +390,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Software_Licensing_Actions' ) ){
 				$return_args['msg'] = WPWHPRO()->helpers->translate( "The license was successfully created.", 'action-edd_create_license-success' );
 				$return_args['success'] = true;
 				$return_args['data']['license_id'] = $license->ID;
+				$return_args['data']['license_key'] = $license->get_license_key();
 				$return_args['data']['download_id'] = $download_id;
 				$return_args['data']['payment_id'] = $payment_id;
 				$return_args['data']['price_id'] = $price_id;

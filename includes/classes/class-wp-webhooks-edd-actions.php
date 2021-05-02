@@ -795,7 +795,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 		}
 
 		/**
-		 * Update the post meta
+		 * Update the post (download) meta
 		 *
 		 * @param int $post_id - the post id
 		 * @return void
@@ -1215,7 +1215,7 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 				'currency'      => ( ! empty( $currency ) ) ? $currency : edd_get_currency(),
 				'cart_details'  => $product_details,
 				'parent'        => $parent_payment_id,
-				'status'        => ( ! empty( $payment_status ) ) ? $payment_status : 'pending',
+				'status'        => 'pending',
 			);
 
 			if ( ! empty( $payment_date ) ) {
@@ -1244,12 +1244,27 @@ if( !class_exists( 'WP_Webhooks_EDD_Actions' ) ){
 
 			if( ! $send_receipt ){
 				remove_action( 'edd_complete_purchase', 'edd_trigger_purchase_receipt', 1000 );
+
+				// if we're using EDD Per Product Emails, prevent the custom email from being sent
+				if ( class_exists( 'EDD_Per_Product_Emails' ) ) {
+					remove_action( 'edd_complete_purchase', 'edd_ppe_trigger_purchase_receipt', 1000, 1 );
+				}
 			}
 
 			$payment_id = edd_insert_payment( $purchase_data );
 
+			//Make sure the status is updated after
+			if( $payment_id && ! empty( $payment_status ) && $payment_status !== 'pending' ){
+				edd_update_payment_status( $payment_id, $payment_status );
+			}
+
 			if( ! $send_receipt ){
 				add_action( 'edd_complete_purchase', 'edd_trigger_purchase_receipt', 999, 3 );
+
+				// if we're using EDD Per Product Emails, prevent the custom email from being sent
+				if ( class_exists( 'EDD_Per_Product_Emails' ) ) {
+					add_action( 'edd_complete_purchase', 'edd_ppe_trigger_purchase_receipt', 999, 1 );
+				}
 			}
 
 			if( ! empty( $payment_id ) ){
